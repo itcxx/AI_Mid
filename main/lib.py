@@ -857,10 +857,7 @@ def read_data_nmt():
     """Load the  dataset.
 
     Defined in :numref:`sec_machine_translation`"""
-    # data_dir = d2l.download_extract('fra-eng')
-    # data_dir="../data/kor-eng"
-    # with open(os.path.join(data_dir, 'fra.txt'), 'rb') as f:
-    # with open(os.path.join(data_dir, 'selected_conversations.txt'), 'rb') as f:
+
     with open("../data/kor-eng/selected_conversations.txt", 'rb') as f:
         return f.read()
 
