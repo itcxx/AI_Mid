@@ -225,4 +225,4 @@ def test(train_iter=False):
 
 if __name__ == '__main__':
 
-    test(train_iter=True)
+    test(train_iter=False)
