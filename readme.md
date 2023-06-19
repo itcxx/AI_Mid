@@ -60,6 +60,8 @@
 
 ### Score before: 0.767 
 ### Score after: 0.800
+Modified the number of blocks, then changed the position code to a learnable code, and finally made the result better
+
 ** **
 
 ### 2. Data Description
