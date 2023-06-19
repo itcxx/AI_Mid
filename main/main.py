@@ -1,4 +1,7 @@
 import sys
+
+import numpy as np
+
 sys.path.append("../")
 import math
 import os.path
@@ -7,6 +10,19 @@ import pandas as pd
 import torch
 from torch import nn
 import lib as d2l
+import matplotlib.pyplot as plt
+
+
+class LearnablePositionalEncoding(nn.Module):
+    def __init__(self,num_hiddens,max_len=100):
+        super(LearnablePositionalEncoding, self).__init__()
+        self.pe=nn.Parameter(torch.randn(1,max_len,num_hiddens))
+
+    def forward(self,x):
+        x=x + self.pe[:,x.size(1),:]
+        return x
+
+
 
 #@save
 class PositionWiseFFN(nn.Module):
@@ -63,7 +79,8 @@ class TransformerEncoder(d2l.Encoder):
         super(TransformerEncoder, self).__init__(**kwargs)
         self.num_hiddens = num_hiddens
         self.embedding = nn.Embedding(vocab_size, num_hiddens)
-        self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        # self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        self.pos_encoding=LearnablePositionalEncoding(num_hiddens)
         self.blks = nn.Sequential()
         for i in range(num_layers):
             self.blks.add_module("block"+str(i),
@@ -137,7 +154,8 @@ class TransformerDecoder(d2l.AttentionDecoder):
         self.num_hiddens = num_hiddens
         self.num_layers = num_layers
         self.embedding = nn.Embedding(vocab_size, num_hiddens)
-        self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        # self.pos_encoding = d2l.PositionalEncoding(num_hiddens, dropout)
+        self.pos_encoding = LearnablePositionalEncoding(num_hiddens)
         self.blks = nn.Sequential()
         for i in range(num_layers):
             self.blks.add_module("block"+str(i),
@@ -169,7 +187,7 @@ class TransformerDecoder(d2l.AttentionDecoder):
 
 #train:
 
-num_hiddens, num_layers, dropout, batch_size, num_steps = 32, 2, 0.1, 64, 10  #num_steps :设置句子固定长度
+num_hiddens, num_layers, dropout, batch_size, num_steps = 32, 3, 0.1, 64, 10  #num_steps :设置句子固定长度
 lr, num_epochs, device = 0.0002, 4000, d2l.try_gpu()
 ffn_num_input, ffn_num_hiddens, num_heads = 32, 64, 4
 key_size, query_size, value_size = 32, 32, 32
@@ -195,8 +213,6 @@ def train():
 def test(train_iter=False):
     if train_iter!=False or os.path.exists("network.pkl")==False:
         train()
-
-
     encoder = TransformerEncoder(
         len(src_vocab), key_size, query_size, value_size, num_hiddens,
         norm_shape, ffn_num_input, ffn_num_hiddens, num_heads,
@@ -207,21 +223,52 @@ def test(train_iter=False):
         num_layers, dropout)
     net = d2l.EncoderDecoder(encoder, decoder)
     net.to(device)
-    net.load_state_dict(torch.load("network.pkl"))
+    net.load_state_dict(torch.load("network.pkl"),strict=False)
 
-    # engs = ['안녕하세요', "저는 유양이에요", ]
-    # fras = ['Hi!', 'I\'m Yooyang.']
-    #
-    # for eng, fra in zip(engs, fras):
-    #     translation, dec_attention_weight_seq = d2l.predict_seq2seq(
-    #         net, eng, src_vocab, tgt_vocab, num_steps, device, True)
-    #     print(f'{eng} => {translation}, ',
-    #           f'bleu {d2l.bleu(translation, fra, k=2):.3f}')
+
+    text = d2l.preprocess_nmt(d2l.read_data_nmt())
+    fras, engs=[],[]
+    score=[]
+    for i , line in enumerate(text.split('\n')):
+        if i>200:
+            break
+        parts=line.split('\t')
+        if len(parts)==2:
+            fras.append(parts[0])
+            engs.append(parts[1].replace('\r',''))
+
+    for eng, fra in zip(engs, fras):
+        translation, dec_attention_weight_seq = d2l.predict_seq2seq(
+            net, fra, src_vocab, tgt_vocab, num_steps, device, True)
+        score.append(d2l.bleu(translation, eng,k=2))
+    print("score mean: ",sum(score)/len(score))
+    loss2=torch.load("./loss.pt")
+    # x=np.arange(0,len(score),1)
+    x2=np.arange(0,len(loss2),1)
+    # plt.plot(x,score,label="score")
+    plt.plot(x2,loss2,label="loss")
+    plt.plot(x2,[sum(score)/len(score)]*len(loss2),label="mean score")
+    plt.title("Scores before")
+    plt.annotate(sum(score)/len(score), xy=(40, sum(score)/len(score)), xytext=(40, 0.6),
+                 arrowprops=dict( shrink=0.05),
+                 )
+    plt.legend(loc="center right")
+    plt.show()
+
+
+
     while True:
         englan=input("press a word in korean :")
         translation, dec_attention_weight_seq = d2l.predict_seq2seq(
             net,englan, src_vocab, tgt_vocab, num_steps, device, True)
         print(translation)
+
+    # show heatmaps
+    # enc_attention_weights = torch.cat(net.encoder.attention_weights, 0).reshape((num_layers, num_heads, -1, num_steps))
+    # d2l.show_heatmaps(
+    #     enc_attention_weights.cpu(), xlabel='Key positions',
+    #     ylabel='Query positions', titles=['Head %d' % i for i in range(1, 5)],
+    #     figsize=(7, 3.5))
 
 if __name__ == '__main__':
 

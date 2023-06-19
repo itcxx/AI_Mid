@@ -12,7 +12,55 @@
 
 >The project run result: 
 - <img src="/image/img_1.png" width="400" height="300">
+### 1.1 Model Description
+> Use transformer 
+> 
 
+
+  <img src="/image/model.png">
+
+#### * before optimization
+
+* Multi-Head Attention
+  * ![multiHead](./image/multiHead.png)
+  * use four-head attention(h=4)
+
+* Positional Encoding-(Fixed Positional Encoding)
+  * ![Positional](./image/Postional.png)
+  * Each position is encoded as a fixed vector based on sin and cos functions.
+* Encode block and Decode block-(N x 2)
+  * Both the encoder and the decoder use two blocks
+
+
+
+#### * after optimization
+* Positional Encoding-(Learnable Position Encoding)
+  * Uses a learnable positional encoding
+ 
+   ``` 
+  class LearnablePositionalEncoding(nn.Module):
+    def __init__(self,num_hiddens,max_len=100):
+        super(LearnablePositionalEncoding, self).__init__()
+        self.pe=nn.Parameter(torch.randn(1,max_len,num_hiddens))
+
+    def forward(self,x):
+        x=x + self.pe[:,x.size(1),:]
+        return x 
+  ```
+* Encode block and Decode block-(N x 3)
+
+
+> Result comparison   
+* Use two hundred sentence cases to test and find the average of the results of bleu
+
+<p float="left">
+  <img src="/image/Figure_1.png" width="400" />
+  <img src="/image/Figure_2.png" width="400" /> 
+</p>
+
+### Score before: 0.767 
+### Score after: 0.800
+** **
 
 ### 2. Data Description
 1. English Parallel Corpus datasets:

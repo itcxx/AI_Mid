@@ -329,6 +329,7 @@ class Animator:
         display.display(self.fig)
         display.clear_output(wait=True)
 
+
 def train_ch3(net, train_iter, test_iter, loss, num_epochs, updater):
     """Train a model (defined in Chapter 3).
 
@@ -564,6 +565,7 @@ def tokenize(lines, token='word'):
     else:
         print('ERROR: unknown token type: ' + token)
 
+# change token
 class Vocab:
     """Vocabulary for text."""
     def __init__(self, tokens=None, min_freq=0, reserved_tokens=None):
@@ -573,7 +575,9 @@ class Vocab:
         if reserved_tokens is None:
             reserved_tokens = []
         # Sort according to frequencies
+        # 计算每个token的频率
         counter = count_corpus(tokens)
+        #按照频率排序
         self._token_freqs = sorted(counter.items(), key=lambda x: x[1],
                                    reverse=True)
         # The index for the unknown token is 0
@@ -888,9 +892,9 @@ def tokenize_nmt(text, num_examples=None):   #分词，词源化
         if len(parts) == 2:
             source.append(parts[0].split(' '))  # 分割韩语
             target.append(parts[1].split(' '))
-    print(source[0:10])
-    print(target[0:10])
-    return source, target # source 是韩语，target是英语
+    # print(source[0:10])
+    # print(target[0:10])
+    return source, target # source 是韩语，target是英语 [['안녕하세요', '?'], ['네', ',', '안녕하세요', '?'], ['저는', '유양이에요', '.'], ['저는', '김우빈이에요', '.'], ['유양', '씨는', '중국', '사람이에요', '?'], ['네', ',', '저는', '중국', '사람이에요', '.']]
 
 def show_list_len_pair_hist(legend, xlabel, ylabel, xlist, ylist):
     """Plot the histogram for list length pairs.
@@ -926,15 +930,15 @@ def build_array_nmt(lines, vocab, num_steps): #将句子换成小批量
         d2l.astype(array != vocab['<pad>'], d2l.int32), 1)
     return array, valid_len  #返回小批量的句子和句子的实际长度
 
-def load_data_nmt(batch_size, num_steps, num_examples=600):  #主加载函数
+def load_data_nmt(batch_size, num_steps, num_examples=6000):  #主加载函数
     """Return the iterator and the vocabularies of the translation dataset.
 
     Defined in :numref:`subsec_mt_data_loading`"""
     text = preprocess_nmt(read_data_nmt())
-    source, target = tokenize_nmt(text, num_examples)
-    src_vocab = d2l.Vocab(source, min_freq=2,
+    source, target = tokenize_nmt(text, num_examples)    #[['안녕하세요', '?'], ['네', ',', '안녕하세요', '?'], ['저는', '유양이에요', '.'], ['저는', '김우빈이에요', '.'], ['유양', '씨는', '중국', '사람이에요', '?'], ['네', ',', '저는', '중국', '사람이에요', '.']]
+    src_vocab = d2l.Vocab(source, min_freq=0,
                           reserved_tokens=['<pad>', '<bos>', '<eos>'])
-    tgt_vocab = d2l.Vocab(target, min_freq=2,
+    tgt_vocab = d2l.Vocab(target, min_freq=0,
                           reserved_tokens=['<pad>', '<bos>', '<eos>'])
     src_array, src_valid_len = build_array_nmt(source, src_vocab, num_steps)
     tgt_array, tgt_valid_len = build_array_nmt(target, tgt_vocab, num_steps)
@@ -1044,6 +1048,7 @@ def train_seq2seq(net, data_iter, lr, num_epochs, tgt_vocab, device):
     net.train()
     animator = d2l.Animator(xlabel='epoch', ylabel='loss',
                             xlim=[10, num_epochs])
+    lossNum=[]
     for epoch in range(num_epochs):
         timer = d2l.Timer()
         metric = d2l.Accumulator(2)  # Sum of training loss, no. of tokens
@@ -1061,11 +1066,14 @@ def train_seq2seq(net, data_iter, lr, num_epochs, tgt_vocab, device):
             optimizer.step()
             with torch.no_grad():
                 metric.add(l.sum(), num_tokens)
-        if (epoch + 1) % 10 == 0:
-            animator.add(epoch + 1, (metric[0] / metric[1],))
-        print(f'loss {metric[0] / metric[1]:.3f}, {metric[1] / timer.stop():.1f} '
-              f'tokens/sec on {str(device)}')
+        if (epoch + 1) % 40 == 0:
+            lossNum.append(metric[0] / metric[1])
+            print("epoch:",epoch,"\t","loss:",metric[0] / metric[1])
+            # animator.add(epoch + 1, (metric[0] / metric[1],))
+        # print(f'loss {metric[0] / metric[1]:.3f}, {metric[1] / timer.stop():.1f} '
+        #       f'tokens/sec on {str(device)}')
     print(net.state_dict().keys())
+    torch.save(lossNum,"loss.pt")
     torch.save(net.state_dict(),'network.pkl')
 
 
@@ -1142,7 +1150,8 @@ def show_heatmaps(matrices, xlabel, ylabel, titles=None, figsize=(2.5, 2.5),
                 ax.set_ylabel(ylabel)
             if titles:
                 ax.set_title(titles[j])
-    fig.colorbar(pcm, ax=axes, shrink=0.6);
+    fig.colorbar(pcm, ax=axes, shrink=0.6)
+
 
 def masked_softmax(X, valid_lens):
     """Perform softmax operation by masking elements on the last axis.

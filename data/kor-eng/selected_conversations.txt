@@ -1,4 +1,3 @@
-0	1
 안녕하세요?	Hello.
 네, 안녕하세요?	Hello.
 저는 유양이에요.	I'm Yooyang.
